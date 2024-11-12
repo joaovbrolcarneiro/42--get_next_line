@@ -5,56 +5,82 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: jbrol-ca <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/11/12 17:09:47 by jbrol-ca          #+#    #+#             */
-/*   Updated: 2024/11/12 17:09:56 by jbrol-ca         ###   ########.fr       */
+/*   Created: 2024/11/12 20:30:01 by jbrol-ca          #+#    #+#             */
+/*   Updated: 2024/11/12 20:30:07 by jbrol-ca         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
+static char	*readfile(int fd, char *buffer, char *stash);
+static char	*get_line(char *line);
+
 char	*get_next_line(int fd)
 {
-	static char	*remainder = NULL;
-	char		*buffer;
+	static char	*stash;
 	char		*line;
-	ssize_t		bytes_read;
-	char		*newline_pos;
+	char		*buffer;
 
-	if (fd < 0 || BUFFER_SIZE <= 0)
+	buffer = (char *)malloc(sizeof(char) * (BUFFER_SIZE + 1));
+	if (fd == -1 || BUFFER_SIZE <= 0)
+	{
+		free(buffer);
 		return (NULL);
-	buffer = (char *)malloc(BUFFER_SIZE + 1);
-	if (!buffer)
+	}
+	if (buffer == NULL)
 		return (NULL);
+	line = readfile(fd, buffer, stash);
+	free(buffer);
+	if (line == NULL)
+		return (NULL);
+	stash = get_line(line);
+	return (line);
+}
+
+static char	*readfile(int fd, char *buffer, char *stash)
+{
+	char	*tmp;
+	ssize_t	bytes_read;
+
 	bytes_read = 1;
 	while (bytes_read > 0)
 	{
 		bytes_read = read(fd, buffer, BUFFER_SIZE);
 		if (bytes_read == -1)
 		{
-			free(buffer);
+			free(stash);
 			return (NULL);
 		}
+		else if (bytes_read == 0)
+			break ;
 		buffer[bytes_read] = '\0';
-		remainder = ft_strjoin(remainder, buffer);
-		newline_pos = ft_strchr(remainder, '\n');
-		if (newline_pos)
-		{
-			*newline_pos = '\0';
-			line = ft_strdup(remainder);
-			remainder = ft_strdup(newline_pos + 1);
-			free(buffer);
-			return (line);
-		}
+		if (stash == NULL)
+			stash = ft_strdup("");
+		tmp = stash;
+		stash = ft_strjoin(tmp, buffer);
+		free(tmp);
+		if (ft_strchr(buffer, '\n'))
+			break ;
 	}
-	free(buffer);
-	if (remainder && *remainder)
+	return (stash);
+}
+
+static char	*get_line(char *line)
+{
+	ssize_t	i;
+	char	*new_stash;
+
+	i = 0;
+	while (line[i] != '\n' && line[i] != '\0')
+		i++;
+	if (line[i] == '\0' || line[1] == '\0')
+		return (NULL);
+	new_stash = ft_substr(line, i + 1, ft_strlen(line) - i);
+	if (*new_stash == '\0')
 	{
-		line = ft_strdup(remainder);
-		free(remainder);
-		remainder = NULL;
-		return (line);
+		free(new_stash);
+		new_stash = NULL;
 	}
-	free(remainder);
-	remainder = NULL;
-	return (NULL);
+	line[i + 1] = '\0';
+	return (new_stash);
 }
